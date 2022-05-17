@@ -12,6 +12,9 @@ const Home: NextPage = () => {
       <div className="text-3xl">
         Husky - <span className="text-red-400">ON</span>
       </div>
+      <div className="text-3xl">
+        Jest - <span className="text-cyan-400">ON</span>
+      </div>
     </div>
   )
 }
