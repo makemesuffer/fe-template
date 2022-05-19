@@ -16,9 +16,12 @@
     "lint-frontend": "lint-staged"
   },
   "dependencies": {
+    "@metamask/providers": "^8.1.1",
+    "ethers": "^5.6.6",
     "next": "12.1.6",
     "react": "18.1.0",
     "react-dom": "18.1.0",
+    "swr": "^1.3.0",
     "tailwindcss": "^3.0.24"
   },
   "devDependencies": {
