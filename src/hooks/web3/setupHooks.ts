@@ -1,11 +1,19 @@
-import { providers } from 'ethers'
+import { Web3Dependencies } from 'types/hooks'
+import { hookFactory as createAccountHook, UseAccountHook } from './useAccount'
+import { hookFactory as createNetworkHook, UseNetworkHook } from './useNetwork'
 
-import { handler as createAccountHook } from './useAccount'
-import { handler as createNetworkHook } from './useNetwork'
+export type Web3Hooks = {
+  useAccount: UseAccountHook
+  useNetwork: UseNetworkHook
+}
 
-export const setupHooks = (provider: providers.Web3Provider) => {
+export type SetupHooks = {
+  (d: Web3Dependencies): Web3Hooks
+}
+
+export const setupHooks: SetupHooks = (deps) => {
   return {
-    useAccount: createAccountHook(provider),
-    useNetwork: createNetworkHook(provider),
+    useAccount: createAccountHook(deps),
+    useNetwork: createNetworkHook(deps),
   }
 }

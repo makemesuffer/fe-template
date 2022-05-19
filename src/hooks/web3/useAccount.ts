@@ -1,34 +1,70 @@
 import { useEffect } from 'react'
 import useSWR from 'swr'
-import { providers } from 'ethers'
 
-export const handler = (provider: providers.Web3Provider) => () => {
-  const { data, mutate, ...rest } = useSWR(
-    () => (provider ? 'accounts' : null),
-    async () => {
-      const accounts = await provider.listAccounts()
-      const account = accounts[0]
+import { CryptoHookFactory } from 'types/hooks'
 
-      if (!account) {
-        throw new Error('Cannot retreive an account. Please refresh the browser.')
-      }
-
-      return account
-    },
-  )
-
-  useEffect(() => {
-    const mutator = (accounts: string[]) => mutate(accounts[0] ?? null)
-    provider?.on('accountsChanged', mutator)
-
-    return () => {
-      provider?.removeListener('accountsChanged', mutator)
-    }
-  }, [mutate])
-
-  return {
-    data,
-    mutate,
-    ...rest,
-  }
+type UseAccountResponse = {
+  connect: () => void
+  isLoading: boolean
+  isInstalled: boolean
 }
+
+type AccountHookFactory = CryptoHookFactory<string, UseAccountResponse>
+
+export type UseAccountHook = ReturnType<AccountHookFactory>
+
+export const hookFactory: AccountHookFactory =
+  ({ provider, ethereum, isLoading }) =>
+  () => {
+    const { data, mutate, isValidating, ...swr } = useSWR(
+      provider ? 'useAccount' : null,
+      async () => {
+        const accounts = await provider!.listAccounts()
+        const account = accounts[0]
+
+        if (!account) {
+          throw 'Cannot retreive account! Please, connect to web3 wallet.'
+        }
+
+        return account
+      },
+      {
+        revalidateOnFocus: false,
+        shouldRetryOnError: false,
+      },
+    )
+
+    useEffect(() => {
+      ethereum?.on('accountsChanged', handleAccountsChanged)
+      return () => {
+        ethereum?.removeListener('accountsChanged', handleAccountsChanged)
+      }
+    })
+
+    const handleAccountsChanged = (...args: unknown[]) => {
+      const accounts = args[0] as string[]
+      if (accounts.length === 0) {
+        console.error('Please, connect to Web3 wallet')
+      } else if (accounts[0] !== data) {
+        mutate(accounts[0])
+      }
+    }
+
+    const connect = async () => {
+      try {
+        ethereum?.request({ method: 'eth_requestAccounts' })
+      } catch (e) {
+        console.error(e)
+      }
+    }
+
+    return {
+      ...swr,
+      data,
+      isValidating,
+      isLoading: isLoading as boolean,
+      isInstalled: ethereum?.isMetaMask || false,
+      mutate,
+      connect,
+    }
+  }

@@ -1,60 +1,59 @@
 import useSWR from 'swr'
-import { providers } from 'ethers'
 
-const NETWORKS = [
-  {
-    id: 1,
-    name: 'Ethereum Main Network',
-  },
-  {
-    id: 3,
-    name: 'Ropsten Test Network',
-  },
-  {
-    id: 4,
-    name: 'Rinkeby Test Network',
-  },
-  {
-    id: 5,
-    name: 'Goerli Test Network',
-  },
-  {
-    id: 42,
-    name: 'Kovan Test Network',
-  },
-  {
-    id: 56,
-    name: 'Binance Smart Chain',
-  },
-  {
-    id: 1337,
-    name: 'Ganache',
-  },
-]
+import { CryptoHookFactory } from 'types/hooks'
 
-const targetNetwork = NETWORKS.filter(
-  (network) => network.id === Number(process.env.NEXT_PUBLIC_TARGET_CHAIN_ID),
-)[0]
-
-export const handler = (provider: providers.Web3Provider) => () => {
-  const { data, ...rest } = useSWR(
-    () => (provider ? 'network' : null),
-    async () => {
-      const network = await provider.getNetwork()
-      const chainId = network.chainId
-
-      if (!chainId) {
-        throw new Error('Cannot retreive network. Please refresh the browser.')
-      }
-
-      return NETWORKS.filter((network) => network.id === chainId)[0]
-    },
-  )
-
-  return {
-    data,
-    target: targetNetwork,
-    isSupported: data === targetNetwork,
-    ...rest,
-  }
+const NETWORKS: { [k: string]: string } = {
+  1: 'Ethereum Main Network',
+  3: 'Ropsten Test Network',
+  4: 'Rinkeby Test Network',
+  5: 'Goerli Test Network',
+  42: 'Kovan Test Network',
+  56: 'Binance Smart Chain',
+  1337: 'Ganache',
 }
+
+const targetId = process.env.NEXT_PUBLIC_TARGET_CHAIN_ID as string
+const targetNetwork = NETWORKS[targetId]
+
+type UseNetworkResponse = {
+  isLoading: boolean
+  isSupported: boolean
+  targetNetwork: string
+  isConnectedToNetwork: boolean
+}
+
+type NetworkHookFactory = CryptoHookFactory<string, UseNetworkResponse>
+
+export type UseNetworkHook = ReturnType<NetworkHookFactory>
+
+export const hookFactory: NetworkHookFactory =
+  ({ provider, isLoading }) =>
+  () => {
+    const { data, isValidating, ...swr } = useSWR(
+      provider ? 'useNetwork' : null,
+      async () => {
+        const chainId = (await provider!.getNetwork()).chainId
+
+        if (!chainId) {
+          throw 'Cannot retreive network. Please, refresh browser or connect to other one.'
+        }
+
+        return NETWORKS[chainId]
+      },
+      {
+        revalidateOnFocus: false,
+      },
+    )
+
+    const isSupported = data === targetNetwork
+
+    return {
+      ...swr,
+      data,
+      isValidating,
+      targetNetwork,
+      isSupported,
+      isConnectedToNetwork: !isLoading && isSupported,
+      isLoading: isLoading as boolean,
+    }
+  }
